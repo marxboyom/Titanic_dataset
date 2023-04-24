@@ -79,5 +79,98 @@ numerical_cols = [cname for cname in train_df.columns if
 print(f'We have {len(categorical_cols)} categorical columns: {categorical_cols}')
 print(f'We have {len(numerical_cols)} numerical columns: {numerical_cols}')
 
+#préparation des données du set train_df
+data_df = train_df.append(test_df)
+qty_train_rows = train_df.shape[0]
+data_df['Title'] = data_df['Name'].apply(lambda name: name.split(',')[1].split('.')[0].strip())
+data_df['Title'].value_counts()
+
+mapping = {
+    'Col': 'Mr', 
+    'Mlle': 'Miss', 
+    'Major': 'Mr', 
+    'Ms': 'Miss',
+    'Lady': 'Mrs', 
+    'Sir': 'Mr',
+    'Mme': 'Miss',
+    'Don': 'Mr', 
+    'Capt': 'Mr', 
+    'the Countess': 'Mrs', 
+    'Jonkheer': 'Mr',
+    'Dona': 'Mrs'
+}
+
+data_df.replace({'Title': mapping}, inplace=True)
+
+data_df['Title'].value_counts()
+
+#Pourcentage de corrélation entre les survivants et le nouveau mapping
+title_impact_on_survive = data_df[~data_df['Survived'].isna()][['Title', 'Survived']].groupby('Title')['Survived'].mean()
+title_impact_on_survive
+fig, ax = plt.subplots(figsize=(8,6))
+sns.barplot(x='Title', y='Survived', data=title_impact_on_survive.reset_index())
+fig.suptitle('Correlations between title and survived')
+plt.show()
+
+#histogramme de l'âge:
+sns.displot(data_df['Age'], bins=20, kde=False)
+plt.show()
+
+#histogramme du prix d'achat des billets:
+sns.displot(data_df['Fare'], bins=5, kde=False)
+plt.show()
+
+#Choix du modele de prédiction :
+x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=10)
+models = {
+    'Logistic Regression': LogisticRegression(),
+    'Decision Tree': DecisionTreeClassifier(),
+    'Random Forest': RandomForestClassifier(),
+    'SVM': SVC(),
+    'XGBClassifier':XGBClassifier(),
+    'GradientBoostingClassifier':GradientBoostingClassifier(),
+    'AdaBoostClassifier':AdaBoostClassifier()
+    
+}
+
+# Train and evaluate each model using cross-validation
+for name, model in models.items():
+    scores = cross_val_score(model, x_train, y_train, cv=5, scoring='accuracy')
+    print(f"{name} accuracy: {scores.mean():.3f} +/- {scores.std():.3f}")
+    
+    # Fit the model to the full training set and make predictions on the test set
+    model.fit(x_train, y_train)
+    y_pred = model.predict(x_test)
+    
+    # Evaluate the model on the test set
+    acc = accuracy_score(y_test, y_pred)
+    prec = precision_score(y_test, y_pred)
+    rec = recall_score(y_test, y_pred)
+    f1 = f1_score(y_test, y_pred)
+    
+    print(f"Accuracy: {acc:.3f}")
+    print(f"Precision: {prec:.3f}")
+    print(f"Recall: {rec:.3f}")
+    print(f"F1-score: {f1:.3f}")
+    print()
+    
+    gbc= GradientBoostingClassifier()
+scores = cross_val_score(gbc, x_train, y_train, cv=5, scoring='accuracy')
+print(f"{gbc} accuracy: {scores}")
+    
+# Fit the model to the full training set and make predictions on the test set
+gbc.fit(x_train, y_train)
+y_pred = gbc.predict(x_test)
+
+# Evaluate the model on the test set
+acc = accuracy_score(y_test, y_pred)
+
+#prédiction :
+test_pred = gbc.predict(test)
+submission = pd.DataFrame({'PassengerId': PassengerId, 'Survived': test_pred})
+submission.to_csv('submission.csv', index=False)
+print (acc)
+
+
 
 
